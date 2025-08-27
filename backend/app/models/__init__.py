@@ -7,6 +7,7 @@ from .product import Product
 from .role import Role
 from .permission import Permission
 from .role_permission import RolePermission
+from .password_reset_token import PasswordResetToken
 from .sale import Sale, SaleItem
 from .payment import Payment
 from .pessoa import Pessoa
@@ -16,7 +17,7 @@ __all__ = [
     "User", "UserRole",
     "Client", "Supplier", "Phone", "Address",
     "Category", "Product",
-    "Role", "Permission", "RolePermission",
+    "Role", "Permission", "RolePermission", "PasswordResetToken",
     "Sale", "SaleItem", "Payment", "Pessoa",
     "SaleOrder", "SaleOrderItem"
 ]

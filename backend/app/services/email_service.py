@@ -14,19 +14,21 @@ class EmailService:
         self.smtp_from = settings.smtp_from
 
     def send_email(self, to_email: str, subject: str, html_content: str) -> bool:
-        """Send email - uses mock in development, real SMTP in production"""
+        """Send email via SMTP"""
         
-        if settings.environment == "development":
-            # Mock email service for development
-            print(f"\n=== EMAIL MOCK ===")
-            print(f"To: {to_email}")
-            print(f"Subject: {subject}")
-            print(f"Content:\n{html_content}")
-            print(f"================\n")
-            return True
+        # Verificar se todas as configurações SMTP estão disponíveis
+        if not all([self.smtp_host, self.smtp_port, self.smtp_username, self.smtp_password]):
+            print("Erro: Configurações SMTP incompletas")
+            print(f"SMTP_HOST: {self.smtp_host}")
+            print(f"SMTP_PORT: {self.smtp_port}")
+            print(f"SMTP_USERNAME: {self.smtp_username}")
+            print(f"SMTP_PASSWORD: {'*' * len(self.smtp_password) if self.smtp_password else 'None'}")
+            return False
         
         try:
-            # Real SMTP for production
+            print(f"Enviando email para: {to_email}")
+            print(f"Usando SMTP: {self.smtp_host}:{self.smtp_port}")
+            
             msg = MIMEMultipart()
             msg['From'] = self.smtp_from
             msg['To'] = to_email
@@ -40,10 +42,12 @@ class EmailService:
             server.sendmail(self.smtp_from, [to_email], msg.as_string())
             server.quit()
             
+            print(f"Email enviado com sucesso para: {to_email}")
             return True
             
         except Exception as e:
             print(f"Erro ao enviar email: {str(e)}")
+            print(f"Tipo do erro: {type(e).__name__}")
             return False
 
     def send_password_reset_email(self, to_email: str, reset_link: str) -> bool:

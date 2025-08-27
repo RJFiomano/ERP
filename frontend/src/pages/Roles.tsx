@@ -28,7 +28,17 @@ import {
   Alert,
   Snackbar,
   Collapse,
-  Divider
+  Divider,
+  Card,
+  CardHeader,
+  CardContent,
+  ButtonGroup,
+  Tooltip,
+  Avatar,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -37,10 +47,21 @@ import {
   Search as SearchIcon,
   KeyboardArrowDown,
   KeyboardArrowUp,
-  Security as SecurityIcon
+  Security as SecurityIcon,
+  SelectAll as SelectAllIcon,
+  DeselectOutlined as DeselectIcon,
+  CheckBox as CheckBoxIcon,
+  CheckBoxOutlineBlank as CheckBoxBlankIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  Person as PersonIcon,
+  SupervisorAccount as ManagerIcon,
+  Work as OperatorIcon,
+  Store as SellerIcon
 } from '@mui/icons-material';
 import { rolesAPI, permissionsAPI } from '@/services/api';
 import { Role, Permission, CreateRoleRequest, UpdateRoleRequest } from '@/types/role';
+import { PermissionGuard } from '@/components/PermissionGuard';
 
 interface RoleFilters {
   search: string;
@@ -68,6 +89,7 @@ const Roles: React.FC = () => {
   // UI states
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [expandedResources, setExpandedResources] = useState<Set<string>>(new Set());
 
   // Carregar dados iniciais
   useEffect(() => {
@@ -190,7 +212,130 @@ const Roles: React.FC = () => {
     }, {} as Record<string, Permission[]>);
   };
 
+  // Mapear nomes de recursos em português
+  const resourceNames: Record<string, string> = {
+    dashboard: 'Painel',
+    users: 'Usuários',
+    roles: 'Perfis',
+    permissions: 'Permissões',
+    products: 'Produtos',
+    categories: 'Categorias',
+    clients: 'Clientes',
+    suppliers: 'Fornecedores',
+    pessoas: 'Pessoas',
+    sales: 'Vendas',
+    purchase_orders: 'Pedidos de Compra',
+    inventory: 'Estoque',
+    accounts_receivable: 'Contas a Receber',
+    accounts_payable: 'Contas a Pagar',
+    financial: 'Financeiro',
+    reports: 'Relatórios',
+    settings: 'Configurações',
+    nfe: 'Nota Fiscal Eletrônica'
+  };
+
+  // Templates de perfis pré-definidos
+  const roleTemplates = {
+    administrador: {
+      name: 'Administrador',
+      description: 'Acesso completo ao sistema',
+      icon: <PersonIcon />,
+      permissions: permissions.map(p => p.id)
+    },
+    gerente: {
+      name: 'Gerente',
+      description: 'Visualizar, criar e editar (sem exclusões críticas)',
+      icon: <ManagerIcon />,
+      permissions: permissions.filter(p => 
+        p.action === 'view' || p.action === 'create' || p.action === 'edit' ||
+        p.action === 'export' || p.action === 'import' || p.action === 'settle' ||
+        p.action === 'pay' || p.action === 'approve' || p.action === 'receive'
+      ).map(p => p.id)
+    },
+    operador: {
+      name: 'Operador',
+      description: 'Visualizar e criar registros básicos',
+      icon: <OperatorIcon />,
+      permissions: permissions.filter(p => 
+        p.action === 'view' || p.action === 'create' ||
+        (p.resource === 'sales' && p.action === 'edit') ||
+        (p.resource === 'inventory' && ['entry', 'exit', 'adjust'].includes(p.action))
+      ).map(p => p.id)
+    },
+    vendedor: {
+      name: 'Vendedor',
+      description: 'Foco em vendas, clientes e produtos',
+      icon: <SellerIcon />,
+      permissions: permissions.filter(p => 
+        (['sales', 'clients', 'products', 'dashboard'].includes(p.resource) && 
+         ['view', 'create', 'edit'].includes(p.action)) ||
+        (p.resource === 'reports' && p.action === 'sales')
+      ).map(p => p.id)
+    }
+  };
+
   const permissionsByResource = groupPermissionsByResource(permissions);
+
+  // Funções para manipulação de permissões
+  const handleSelectAllResources = () => {
+    setFormData(prev => ({
+      ...prev,
+      permission_ids: permissions.map(p => p.id)
+    }));
+  };
+
+  const handleDeselectAllResources = () => {
+    setFormData(prev => ({
+      ...prev,
+      permission_ids: []
+    }));
+  };
+
+  const handleSelectResourcePermissions = (resource: string, select: boolean) => {
+    const resourcePermissions = permissionsByResource[resource] || [];
+    const resourcePermissionIds = resourcePermissions.map(p => p.id);
+    
+    setFormData(prev => ({
+      ...prev,
+      permission_ids: select
+        ? [...new Set([...(prev.permission_ids || []), ...resourcePermissionIds])]
+        : (prev.permission_ids || []).filter(id => !resourcePermissionIds.includes(id))
+    }));
+  };
+
+  const handleApplyTemplate = (templateKey: string) => {
+    const template = roleTemplates[templateKey as keyof typeof roleTemplates];
+    setFormData(prev => ({
+      ...prev,
+      name: prev.name || template.name,
+      description: prev.description || template.description,
+      permission_ids: template.permissions
+    }));
+  };
+
+  const toggleResourceExpansion = (resource: string) => {
+    setExpandedResources(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(resource)) {
+        newSet.delete(resource);
+      } else {
+        newSet.add(resource);
+      }
+      return newSet;
+    });
+  };
+
+  const getSelectedPermissionsCount = (resource: string) => {
+    const resourcePermissions = permissionsByResource[resource] || [];
+    const selectedIds = formData.permission_ids || [];
+    return resourcePermissions.filter(p => selectedIds.includes(p.id)).length;
+  };
+
+  const isAllResourceSelected = (resource: string) => {
+    const resourcePermissions = permissionsByResource[resource] || [];
+    const selectedIds = formData.permission_ids || [];
+    return resourcePermissions.length > 0 && resourcePermissions.every(p => selectedIds.includes(p.id));
+  };
 
   return (
     <Box sx={{ p: 3 }}>
@@ -204,13 +349,15 @@ const Roles: React.FC = () => {
                   Gerenciamento de Roles
                 </Typography>
               </Box>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => handleOpenModal()}
-              >
-                Novo Role
-              </Button>
+              <PermissionGuard resource="roles" action="create">
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => handleOpenModal()}
+                >
+                  Novo Role
+                </Button>
+              </PermissionGuard>
             </Box>
 
             {/* Filtros */}
@@ -302,21 +449,25 @@ const Roles: React.FC = () => {
                             />
                           </TableCell>
                           <TableCell align="center">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleOpenModal(role)}
-                              color="primary"
-                            >
-                              <EditIcon />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDelete(role.id)}
-                              color="error"
-                              disabled={!role.is_active}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
+                            <PermissionGuard resource="roles" action="edit">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenModal(role)}
+                                color="primary"
+                              >
+                                <EditIcon />
+                              </IconButton>
+                            </PermissionGuard>
+                            <PermissionGuard resource="roles" action="delete">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDelete(role.id)}
+                                color="error"
+                                disabled={!role.is_active}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </PermissionGuard>
                           </TableCell>
                         </TableRow>
                         <TableRow>
@@ -385,29 +536,146 @@ const Roles: React.FC = () => {
               <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
                 Permissões
               </Typography>
-              <Paper sx={{ p: 2, maxHeight: 400, overflow: 'auto' }}>
-                {Object.entries(permissionsByResource).map(([resource, resourcePermissions]) => (
-                  <Box key={resource}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, textTransform: 'capitalize' }}>
-                      {resource}
-                    </Typography>
-                    <FormGroup row sx={{ mb: 2 }}>
-                      {resourcePermissions.map((permission) => (
-                        <FormControlLabel
-                          key={permission.id}
-                          control={
-                            <Checkbox
-                              checked={(formData.permission_ids || []).includes(permission.id)}
-                              onChange={(e) => handlePermissionChange(permission.id, e.target.checked)}
-                            />
+              
+              {/* Templates de Perfis */}
+              <Paper sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
+                <Typography variant="subtitle2" gutterBottom color="primary">
+                  Templates de Perfil
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                  {Object.entries(roleTemplates).map(([key, template]) => (
+                    <Tooltip key={key} title={template.description}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={template.icon}
+                        onClick={() => handleApplyTemplate(key)}
+                        sx={{ textTransform: 'none' }}
+                      >
+                        {template.name}
+                      </Button>
+                    </Tooltip>
+                  ))}
+                </Box>
+                
+                {/* Controles Globais */}
+                <ButtonGroup variant="outlined" size="small">
+                  <Button
+                    startIcon={<SelectAllIcon />}
+                    onClick={handleSelectAllResources}
+                  >
+                    Selecionar Todas
+                  </Button>
+                  <Button
+                    startIcon={<DeselectIcon />}
+                    onClick={handleDeselectAllResources}
+                  >
+                    Desmarcar Todas
+                  </Button>
+                </ButtonGroup>
+                
+                <Chip 
+                  label={`${formData.permission_ids?.length || 0} de ${permissions.length} permissões selecionadas`}
+                  color="primary"
+                  variant="outlined"
+                  size="small"
+                  sx={{ ml: 2 }}
+                />
+              </Paper>
+
+              {/* Cards de Recursos */}
+              <Paper sx={{ maxHeight: 500, overflow: 'auto' }}>
+                {Object.entries(permissionsByResource).map(([resource, resourcePermissions]) => {
+                  const selectedCount = getSelectedPermissionsCount(resource);
+                  const totalCount = resourcePermissions.length;
+                  const isExpanded = expandedResources.has(resource);
+                  const allSelected = isAllResourceSelected(resource);
+
+                  return (
+                    <Card key={resource} sx={{ mb: 1, border: '1px solid', borderColor: 'divider' }}>
+                      <CardHeader
+                        avatar={
+                          <Avatar sx={{ 
+                            bgcolor: selectedCount > 0 ? 'primary.main' : 'grey.300',
+                            color: 'white',
+                            fontSize: '0.875rem'
+                          }}>
+                            {selectedCount}
+                          </Avatar>
+                        }
+                        action={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Tooltip title={allSelected ? 'Desmarcar todas deste módulo' : 'Selecionar todas deste módulo'}>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleSelectResourcePermissions(resource, !allSelected)}
+                                color={allSelected ? 'error' : 'primary'}
+                              >
+                                {allSelected ? <DeselectIcon /> : <SelectAllIcon />}
+                              </IconButton>
+                            </Tooltip>
+                            <IconButton
+                              size="small"
+                              onClick={() => toggleResourceExpansion(resource)}
+                            >
+                              {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                            </IconButton>
+                          </Box>
+                        }
+                        title={
+                          <Typography variant="subtitle1" component="div">
+                            {resourceNames[resource] || resource}
+                          </Typography>
+                        }
+                        subheader={`${selectedCount}/${totalCount} permissões selecionadas`}
+                        sx={{ 
+                          pb: 1,
+                          '& .MuiCardHeader-title': {
+                            fontSize: '1rem',
+                            fontWeight: 600
+                          },
+                          '& .MuiCardHeader-subheader': {
+                            fontSize: '0.875rem'
                           }
-                          label={`${permission.action} (${permission.name})`}
-                        />
-                      ))}
-                    </FormGroup>
-                    <Divider sx={{ mb: 2 }} />
-                  </Box>
-                ))}
+                        }}
+                      />
+                      <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                        <CardContent sx={{ pt: 0 }}>
+                          <FormGroup>
+                            {resourcePermissions.map((permission) => (
+                              <FormControlLabel
+                                key={permission.id}
+                                control={
+                                  <Checkbox
+                                    checked={(formData.permission_ids || []).includes(permission.id)}
+                                    onChange={(e) => handlePermissionChange(permission.id, e.target.checked)}
+                                    size="small"
+                                  />
+                                }
+                                label={
+                                  <Box>
+                                    <Typography variant="body2" component="div">
+                                      <strong>{permission.action}</strong>
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      {permission.name}
+                                    </Typography>
+                                  </Box>
+                                }
+                                sx={{ 
+                                  mb: 0.5,
+                                  '& .MuiFormControlLabel-label': {
+                                    fontSize: '0.875rem'
+                                  }
+                                }}
+                              />
+                            ))}
+                          </FormGroup>
+                        </CardContent>
+                      </Collapse>
+                    </Card>
+                  );
+                })}
               </Paper>
             </Grid>
           </Grid>

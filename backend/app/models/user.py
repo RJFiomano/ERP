@@ -25,3 +25,4 @@ class User(BaseModel):
     
     # Relacionamento com role
     role_obj = relationship("Role", back_populates="users")
+    password_reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
