@@ -316,7 +316,7 @@ class PurchaseService:
             filters = filters or {}
             
             if filters.get('supplier_id'):
-                where_conditions.append("pc.pessoa_id = %s")
+                where_conditions.append("pc.supplier_id = %s")
                 params.append(filters['supplier_id'])
             
             if filters.get('status'):
@@ -341,7 +341,7 @@ class PurchaseService:
                     u.email as created_by_email,
                     (SELECT COUNT(*) FROM pedidos_compra_itens WHERE pedido_id = pc.id) as items_count
                 FROM pedidos_compra pc
-                JOIN pessoas p ON pc.pessoa_id = p.id
+                JOIN pessoas p ON pc.supplier_id = p.id
                 LEFT JOIN users u ON pc.user_id = u.id
                 {where_clause}
                 ORDER BY pc.data_pedido DESC
@@ -395,13 +395,13 @@ class PurchaseService:
             # Buscar pedido principal
             cursor.execute("""
                 SELECT 
-                    pc.id, pc.numero_pedido, pc.pessoa_id, pc.data_pedido, 
+                    pc.id, pc.numero_pedido, pc.supplier_id, pc.data_pedido, 
                     pc.data_entrega_prevista, pc.subtotal, pc.valor_total, pc.status, 
                     pc.urgencia, pc.condicoes_pagamento, pc.local_entrega, pc.observacoes,
                     p.nome as supplier_name, p.documento as supplier_document,
                     ph.number as phone, p.email
                 FROM pedidos_compra pc
-                JOIN pessoas p ON pc.pessoa_id = p.id
+                JOIN pessoas p ON pc.supplier_id = p.id
                 LEFT JOIN phones ph ON p.id = ph.pessoa_id AND ph.is_primary = true
                 WHERE pc.id = %s
             """, (str(order_id),))
@@ -416,7 +416,7 @@ class PurchaseService:
                     pci.id, pci.pedido_id, pci.product_id, pci.quantidade, pci.quantidade_pedida,
                     pci.preco_unitario, pci.desconto_item, pci.preco_final, pci.subtotal_item, 
                     pci.valor_total_item, pci.numero_item, pci.observacoes_item,
-                    p.name as product_name, p.barcode, p.sale_price
+                    p.name as product_name, p.ean_gtin as barcode, p.sale_price
                 FROM pedidos_compra_itens pci
                 JOIN products p ON pci.product_id = p.id
                 WHERE pci.pedido_id = %s
@@ -426,7 +426,7 @@ class PurchaseService:
             items = cursor.fetchall()
             
             # Montar resposta
-            # Índices: 0=id, 1=numero_pedido, 2=pessoa_id, 3=data_pedido, 4=data_entrega_prevista, 
+            # Índices: 0=id, 1=numero_pedido, 2=supplier_id, 3=data_pedido, 4=data_entrega_prevista, 
             # 5=subtotal, 6=valor_total, 7=status, 8=urgencia, 9=condicoes_pagamento, 
             # 10=local_entrega, 11=observacoes, 12=supplier_name, 13=supplier_document, 14=phone, 15=email
             order_data = {
@@ -539,7 +539,7 @@ class PurchaseService:
             # Atualizar pedido principal
             cursor.execute("""
                 UPDATE pedidos_compra 
-                SET pessoa_id = %s, data_entrega_prevista = %s, 
+                SET supplier_id = %s, data_entrega_prevista = %s, 
                     condicoes_pagamento = %s, local_entrega = %s,
                     observacoes = %s, urgencia = %s, status = %s, updated_by = %s,
                     updated_at = CURRENT_TIMESTAMP
