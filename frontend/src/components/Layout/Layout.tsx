@@ -40,6 +40,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { ThemeToggle } from '@/components/common/ThemeToggle';
 
 const drawerWidth = 240;
 
@@ -225,7 +226,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             ERP Sistema
           </Typography>
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <ThemeToggle />
             <IconButton
               size="large"
               aria-label="account of current user"

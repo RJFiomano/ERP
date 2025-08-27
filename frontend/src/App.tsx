@@ -1,12 +1,11 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { CssBaseline } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import { AuthProvider } from './contexts/AuthContext';
 import { PermissionsProvider } from './contexts/PermissionsContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout/Layout';
 
@@ -34,16 +33,7 @@ import Users from './pages/Users';
 import { PurchaseOrders } from './pages/PurchaseOrders';
 import { StockEntries } from './pages/StockEntries';
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-  },
-});
+// Theme is now handled by ThemeProvider context
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,8 +46,7 @@ const queryClient = new QueryClient({
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <PermissionsProvider>
@@ -279,6 +268,7 @@ function App() {
           pauseOnFocusLoss
           draggable
           pauseOnHover
+          theme="auto"
         />
       </QueryClientProvider>
     </ThemeProvider>
