@@ -25,7 +25,29 @@ import {
   Tab,
   Alert,
   TablePagination,
+  TableSortLabel,
+  Popover,
+  List,
+  ListItem,
 } from '@mui/material';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   Add,
   MoreVert,
@@ -106,6 +128,278 @@ export const Pessoas: React.FC = () => {
   const [statusFiltro, setStatusFiltro] = useState<string>('ativos'); // 'ativos', 'inativos', 'todos'
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState(0);
+  
+  // Estados para ordenação
+  const [orderBy, setOrderBy] = useState<string>('nome');
+  const [order, setOrder] = useState<'asc' | 'desc'>('asc');
+
+  // Definição das colunas
+  interface ColumnConfig {
+    id: string;
+    label: string;
+    sortable: boolean;
+    filterable: boolean;
+    width?: number | string;
+    align?: 'left' | 'center' | 'right';
+  }
+
+  const [columns, setColumns] = useState<ColumnConfig[]>([
+    { id: 'nome', label: 'Nome', sortable: true, filterable: true, width: 200 },
+    { id: 'pessoa_tipo', label: 'Tipo', sortable: true, filterable: true, width: 80, align: 'center' },
+    { id: 'documento', label: 'Documento', sortable: true, filterable: true, width: 150 },
+    { id: 'rg', label: 'RG', sortable: false, filterable: true, width: 120 },
+    { id: 'email', label: 'Email', sortable: true, filterable: true, width: 200 },
+    { id: 'papeis', label: 'Papéis', sortable: false, filterable: true, width: 150 },
+    { id: 'is_active', label: 'Status', sortable: true, filterable: true, width: 100, align: 'center' },
+    { id: 'actions', label: 'Ações', sortable: false, filterable: false, width: 80, align: 'center' },
+  ]);
+
+  // Estados para filtros por coluna
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  const [filterAnchor, setFilterAnchor] = useState<{ [key: string]: HTMLElement | null }>({});
+
+  // Sensores para drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Função para lidar com ordenação
+  const handleRequestSort = (property: string) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
+
+  // Função para reordenar colunas
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+
+    if (active.id !== over.id) {
+      setColumns((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  // Função para lidar com filtros por coluna
+  const handleColumnFilter = (columnId: string, value: string) => {
+    setColumnFilters(prev => ({
+      ...prev,
+      [columnId]: value
+    }));
+    setPage(0); // Reset to first page when filtering
+  };
+
+  // Função para abrir/fechar popover de filtro
+  const handleFilterClick = (event: React.MouseEvent<HTMLElement>, columnId: string) => {
+    setFilterAnchor(prev => ({
+      ...prev,
+      [columnId]: event.currentTarget
+    }));
+  };
+
+  const handleFilterClose = (columnId: string) => {
+    setFilterAnchor(prev => ({
+      ...prev,
+      [columnId]: null
+    }));
+  };
+
+  // Função para atualizar largura da coluna
+  const handleResize = (columnId: string, width: number) => {
+    setColumns(prevColumns => 
+      prevColumns.map(col => 
+        col.id === columnId 
+          ? { ...col, width: Math.max(50, width) }
+          : col
+      )
+    );
+  };
+
+  // Estados para redimensionamento
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizingColumn, setResizingColumn] = useState<string | null>(null);
+  const [startX, setStartX] = useState(0);
+  const [startWidth, setStartWidth] = useState(0);
+
+  // Componente para célula arrastável e redimensionável
+  const SortableResizableTableCell: React.FC<{ 
+    column: ColumnConfig; 
+    children: React.ReactNode; 
+  }> = ({ column, children }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: column.id });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+      width: typeof column.width === 'number' ? `${column.width}px` : column.width,
+      position: 'relative' as const,
+    };
+
+    // Função separada para iniciar o redimensionamento no handle
+    const handleResizeMouseDown = (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsResizing(true);
+      setResizingColumn(column.id);
+      setStartX(e.clientX);
+      const currentWidth = typeof column.width === 'number' ? column.width : parseInt(String(column.width || '150').replace('px', ''));
+      setStartWidth(currentWidth);
+    };
+
+    return (
+      <TableCell
+        ref={setNodeRef}
+        style={style}
+        {...(isResizing ? {} : attributes)}
+        {...(isResizing ? {} : listeners)}
+        align={column.align || 'left'}
+        sx={{ 
+          cursor: isDragging ? 'grabbing' : 'grab',
+          userSelect: 'none',
+          position: 'relative',
+        }}
+      >
+        <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
+          {children}
+          
+          {/* Handle dedicado para redimensionamento */}
+          <Box
+            onMouseDown={handleResizeMouseDown}
+            sx={{
+              position: 'absolute',
+              right: '-3px',
+              top: 0,
+              bottom: 0,
+              width: '6px',
+              cursor: 'col-resize',
+              zIndex: 15,
+              backgroundColor: 'transparent',
+              borderRight: '2px solid transparent',
+              '&:hover': {
+                borderRight: '2px solid',
+                borderColor: 'primary.main',
+                backgroundColor: 'rgba(25, 118, 210, 0.08)',
+              },
+              // Sobrepor o cursor do drag
+              '&:hover ~ *': {
+                cursor: 'col-resize !important',
+              }
+            }}
+            title="Redimensionar coluna"
+          />
+        </Box>
+      </TableCell>
+    );
+  };
+
+  // Event listeners para redimensionamento global
+  React.useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isResizing && resizingColumn) {
+        const diff = e.clientX - startX;
+        const newWidth = Math.max(50, startWidth + diff);
+        handleResize(resizingColumn, newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      setResizingColumn(null);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing, resizingColumn, startX, startWidth]);
+
+  // Função para renderizar o conteúdo da célula baseado na coluna
+  const renderCellContent = (column: ColumnConfig, pessoa: Pessoa) => {
+    switch (column.id) {
+      case 'nome':
+        return pessoa.nome;
+      case 'pessoa_tipo':
+        return (
+          <Chip
+            size="small"
+            icon={pessoa.pessoa_tipo === 'PF' ? <Person /> : <Business />}
+            label={pessoa.pessoa_tipo}
+            color={pessoa.pessoa_tipo === 'PF' ? 'primary' : 'secondary'}
+          />
+        );
+      case 'documento':
+        return pessoa.documento ? formatDocument(pessoa.documento, pessoa.pessoa_tipo) : '-';
+      case 'rg':
+        return pessoa.rg || '-';
+      case 'email':
+        return pessoa.email || '-';
+      case 'papeis':
+        return (
+          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+            {pessoa.papeis && pessoa.papeis.length > 0 ? (
+              pessoa.papeis.map((papel) => (
+                <Chip
+                  key={papel}
+                  label={papel}
+                  size="small"
+                  color={getPapelColor(papel) as any}
+                />
+              ))
+            ) : (
+              <Chip
+                label="Sem papel definido"
+                size="small"
+                variant="outlined"
+                color="default"
+              />
+            )}
+          </Box>
+        );
+      case 'is_active':
+        return (
+          <Chip
+            label={pessoa.is_active ? 'Ativo' : 'Inativo'}
+            size="small"
+            color={pessoa.is_active ? 'success' : 'error'}
+          />
+        );
+      case 'actions':
+        return (
+          <IconButton
+            size="small"
+            onClick={(e) => handleMenuClick(e, pessoa)}
+          >
+            <MoreVert />
+          </IconButton>
+        );
+      default:
+        return '';
+    }
+  };
 
   const loadPessoas = async () => {
     setLoading(true);
@@ -128,6 +422,17 @@ export const Pessoas: React.FC = () => {
       if (statusFiltro) {
         params.append('status', statusFiltro);
       }
+      
+      // Adicionar parâmetros de ordenação
+      params.append('order_by', orderBy);
+      params.append('order', order);
+
+      // Adicionar filtros por coluna
+      Object.keys(columnFilters).forEach(columnId => {
+        if (columnFilters[columnId]) {
+          params.append(`filter_${columnId}`, columnFilters[columnId]);
+        }
+      });
 
       const response = await fetch(`${API_URL}/pessoas/?${params.toString()}`);
       if (!response.ok) {
@@ -146,7 +451,7 @@ export const Pessoas: React.FC = () => {
 
   useEffect(() => {
     loadPessoas();
-  }, [papelFiltro, pessoaTipoFiltro, statusFiltro, searchTerm, page, rowsPerPage]);
+  }, [papelFiltro, pessoaTipoFiltro, statusFiltro, searchTerm, page, rowsPerPage, orderBy, order, columnFilters]);
 
   const handleMenuClick = (event: React.MouseEvent<HTMLElement>, person: Pessoa) => {
     setMenuAnchor(event.currentTarget);
@@ -319,9 +624,14 @@ export const Pessoas: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Cadastro de Contatos
-        </Typography>
+        <Box>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            {total} contatos encontrados
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {pessoas.filter(p => p.is_active).length} ativos, {pessoas.filter(p => !p.is_active).length} inativos
+          </Typography>
+        </Box>
         <Button
           variant="contained"
           startIcon={<Add />}
@@ -397,98 +707,155 @@ export const Pessoas: React.FC = () => {
           <Tab label="Funcionários" />
         </Tabs>
 
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Nome</TableCell>
-                <TableCell>Tipo</TableCell>
-                <TableCell>Documento</TableCell>
-                <TableCell>RG</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Papéis</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="center">Ações</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading ? (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <TableContainer>
+            <Table>
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={8} align="center">
-                    Carregando...
-                  </TableCell>
+                  <SortableContext
+                    items={columns.map(col => col.id)}
+                    strategy={horizontalListSortingStrategy}
+                  >
+                    {columns.map((column) => (
+                      <SortableResizableTableCell key={column.id} column={column}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                          {/* Cabeçalho com ordenação e filtro */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {column.sortable ? (
+                              <TableSortLabel
+                                active={orderBy === column.id}
+                                direction={orderBy === column.id ? order : 'asc'}
+                                onClick={() => handleRequestSort(column.id)}
+                              >
+                                {column.label}
+                              </TableSortLabel>
+                            ) : (
+                              <Typography variant="subtitle2">{column.label}</Typography>
+                            )}
+                            {column.filterable && (
+                              <IconButton
+                                size="small"
+                                onClick={(e) => handleFilterClick(e, column.id)}
+                              >
+                                <FilterList fontSize="small" />
+                              </IconButton>
+                            )}
+                          </Box>
+                          
+                          {/* Filtro rápido se houver valor */}
+                          {columnFilters[column.id] && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <Typography variant="caption" color="primary">
+                                Filtro: {columnFilters[column.id]}
+                              </Typography>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleColumnFilter(column.id, '')}
+                              >
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          )}
+                        </Box>
+                      </SortableResizableTableCell>
+                    ))}
+                  </SortableContext>
                 </TableRow>
-              ) : pessoas.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} align="center">
-                    Nenhum contato encontrado
-                  </TableCell>
-                </TableRow>
-              ) : (
-                pessoas.map((pessoa) => (
-                  <TableRow key={pessoa.id} hover>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {pessoa.pessoa_tipo === 'PF' ? <Person /> : <Business />}
-                        {pessoa.nome}
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={pessoa.pessoa_tipo === 'PF' ? 'Pessoa Física' : 'Pessoa Jurídica'}
-                        size="small"
-                        color={pessoa.pessoa_tipo === 'PF' ? 'primary' : 'warning'}
-                      />
-                    </TableCell>
-                    <TableCell sx={{ fontFamily: 'monospace' }}>
-                      {formatDocument(pessoa.documento, pessoa.pessoa_tipo)}
-                    </TableCell>
-                    <TableCell sx={{ fontFamily: 'monospace' }}>
-                      {pessoa.rg || '-'}
-                    </TableCell>
-                    <TableCell>{pessoa.email || '-'}</TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                        {pessoa.papeis && pessoa.papeis.length > 0 ? (
-                          pessoa.papeis.map((papel) => (
-                            <Chip
-                              key={papel}
-                              label={papel}
-                              size="small"
-                              color={getPapelColor(papel) as any}
-                            />
-                          ))
-                        ) : (
-                          <Chip
-                            label="Sem papel definido"
-                            size="small"
-                            variant="outlined"
-                            color="default"
-                          />
-                        )}
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={pessoa.is_active ? 'Ativo' : 'Inativo'}
-                        size="small"
-                        color={pessoa.is_active ? 'success' : 'error'}
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => handleMenuClick(e, pessoa)}
-                      >
-                        <MoreVert />
-                      </IconButton>
+              </TableHead>
+              
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} align="center">
+                      Carregando...
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                ) : pessoas.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} align="center">
+                      Nenhum contato encontrado
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  pessoas.map((pessoa, index) => (
+                    <TableRow 
+                      key={pessoa.id} 
+                      hover
+                      sx={{
+                        '&:nth-of-type(even)': {
+                          backgroundColor: 'action.hover',
+                        },
+                      }}
+                    >
+                      {columns.map((column) => (
+                        <TableCell
+                          key={column.id}
+                          align={column.align || 'left'}
+                          sx={{ width: column.width }}
+                        >
+                          {renderCellContent(column, pessoa)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          
+          {/* Popovers de filtro por coluna */}
+          {columns.map((column) => (
+            column.filterable && (
+              <Popover
+                key={`filter-${column.id}`}
+                open={Boolean(filterAnchor[column.id])}
+                anchorEl={filterAnchor[column.id]}
+                onClose={() => handleFilterClose(column.id)}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'left',
+                }}
+              >
+                <Box sx={{ p: 2, minWidth: 200 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Filtrar {column.label}
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder={`Buscar ${column.label.toLowerCase()}...`}
+                    value={columnFilters[column.id] || ''}
+                    onChange={(e) => handleColumnFilter(column.id, e.target.value)}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Search fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  {column.id === 'is_active' && (
+                    <List dense sx={{ mt: 1 }}>
+                      <ListItem button onClick={() => handleColumnFilter(column.id, 'ativo')}>
+                        <ListItemText primary="Apenas Ativos" />
+                      </ListItem>
+                      <ListItem button onClick={() => handleColumnFilter(column.id, 'inativo')}>
+                        <ListItemText primary="Apenas Inativos" />
+                      </ListItem>
+                      <ListItem button onClick={() => handleColumnFilter(column.id, '')}>
+                        <ListItemText primary="Todos" />
+                      </ListItem>
+                    </List>
+                  )}
+                </Box>
+              </Popover>
+            )
+          ))}
+        </DndContext>
         
         <TablePagination
           rowsPerPageOptions={[10, 25, 50, 100, { label: 'Todos', value: -1 }]}

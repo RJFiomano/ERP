@@ -20,9 +20,14 @@ export const Inventory: React.FC = () => {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">
-          Estoque
-        </Typography>
+        <Box>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            Controle de Estoque
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Monitore produtos, movimentações e níveis de estoque
+          </Typography>
+        </Box>
         <Button
           variant="contained"
           startIcon={<Add />}

@@ -6,10 +6,10 @@ from sqlalchemy import or_, and_
 from app.core.database import get_db
 from app.models.user import User, UserRole
 from app.models.role import Role
-from app.schemas.user import UserCreate, UserUpdate, UserResponse, UserListResponse
+from app.schemas.user import UserCreate, UserUpdate, UserResponse, UserListResponse, UserProfileUpdate
 from app.core.auth import get_current_user
 from app.core.permissions import PermissionChecker, get_user_permissions
-from app.core.security import get_password_hash
+from app.core.security import get_password_hash, verify_password
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -108,6 +108,74 @@ async def create_user(
     
     # Retornar com informações completas
     return await get_user_with_details(user.id, db)
+
+
+@router.get("/profile", response_model=UserResponse)
+async def get_my_profile(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Obter perfil do usuário logado"""
+    return await get_user_with_details(str(current_user.id), db)
+
+
+@router.put("/profile", response_model=UserResponse)
+async def update_my_profile(
+    profile_data: UserProfileUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Atualizar perfil do usuário logado"""
+    
+    # Validar se está tentando alterar senha
+    if profile_data.new_password:
+        if not profile_data.current_password:
+            raise HTTPException(
+                status_code=400, 
+                detail="Senha atual é obrigatória para alterar a senha"
+            )
+        
+        if not verify_password(profile_data.current_password, current_user.password_hash):
+            raise HTTPException(
+                status_code=400,
+                detail="Senha atual incorreta"
+            )
+        
+        if profile_data.new_password != profile_data.confirm_password:
+            raise HTTPException(
+                status_code=400,
+                detail="Nova senha e confirmação não coincidem"
+            )
+    
+    # Validar email único (se está sendo alterado)
+    if profile_data.email and profile_data.email != current_user.email:
+        existing_user = db.query(User).filter(
+            User.email == profile_data.email,
+            User.id != current_user.id
+        ).first()
+        if existing_user:
+            raise HTTPException(
+                status_code=400,
+                detail="Este email já está em uso por outro usuário"
+            )
+    
+    # Atualizar dados
+    update_data = {}
+    if profile_data.name:
+        update_data["name"] = profile_data.name
+    if profile_data.email:
+        update_data["email"] = profile_data.email
+    if profile_data.new_password:
+        update_data["password_hash"] = get_password_hash(profile_data.new_password)
+    
+    # Aplicar mudanças
+    for field, value in update_data.items():
+        setattr(current_user, field, value)
+    
+    db.commit()
+    db.refresh(current_user)
+    
+    return await get_user_with_details(str(current_user.id), db)
 
 
 @router.get("/{user_id}", response_model=UserResponse)

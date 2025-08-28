@@ -116,9 +116,14 @@ export const StockEntries: React.FC = () => {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1">
-          Entrada de Estoque
-        </Typography>
+        <Box>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            {entries.length} entradas de estoque encontradas
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Gerencie entradas de estoque e notas fiscais
+          </Typography>
+        </Box>
         <Box display="flex" gap={1}>
           <Button
             variant="outlined"

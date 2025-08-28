@@ -20,9 +20,14 @@ const SaleOrders: React.FC = () => {
     <Container maxWidth="xl">
       <Box sx={{ py: 3 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h4" component="h1">
-            Pedidos de Venda
-          </Typography>
+          <Box>
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              Pedidos de Venda
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Gerencie todos os pedidos de venda da empresa
+            </Typography>
+          </Box>
           <Button
             variant="contained"
             startIcon={<Add />}

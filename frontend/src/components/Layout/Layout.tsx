@@ -16,6 +16,14 @@ import {
   Menu,
   MenuItem,
   Collapse,
+  Badge,
+  TextField,
+  InputAdornment,
+  Breadcrumbs,
+  Link,
+  alpha,
+  Tooltip,
+  Chip
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -37,10 +45,18 @@ import {
   ShoppingBag,
   Inbox,
   MoneyOff,
+  Notifications as NotificationsIcon,
+  Search as SearchIcon,
+  Business as BusinessIcon,
+  PersonOutline,
+  ExitToApp,
+  Home as HomeIcon,
+  NavigateNext
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const drawerWidth = 240;
 
@@ -101,9 +117,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [open, setOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [expandedMenu, setExpandedMenu] = useState<string[]>([]);
+  const [searchValue, setSearchValue] = useState('');
+  const [notificationsCount] = useState(3); // Simulando notificações
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { darkMode } = useTheme();
 
   const handleDrawerToggle = () => {
     setOpen(!open);
@@ -151,6 +170,68 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     logout();
     navigate('/login');
     handleClose();
+  };
+
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchValue(event.target.value);
+    // Implementar lógica de busca global aqui
+  };
+
+  const handleProfile = () => {
+    navigate('/profile');
+    handleClose();
+  };
+
+  const getBreadcrumbs = () => {
+    const pathnames = location.pathname.split('/').filter((x) => x);
+    const breadcrumbNameMap: Record<string, string> = {
+      'dashboard': 'Dashboard',
+      'products': 'Produtos',
+      'categories': 'Categorias',
+      'sales': 'Vendas',
+      'users': 'Usuários',
+      'roles': 'Roles e Permissões',
+      'settings': 'Configurações',
+      'pessoas': 'Contatos',
+      'inventory': 'Estoque',
+      'reports': 'Relatórios',
+      'purchase-orders': 'Pedidos de Compra',
+      'accounts-receivable': 'Contas a Receber',
+      'accounts-payable': 'Contas a Pagar'
+    };
+
+    return [
+      <Link 
+        key="home"
+        color="inherit" 
+        href="#" 
+        onClick={(e) => { e.preventDefault(); navigate('/dashboard'); }}
+        sx={{ display: 'flex', alignItems: 'center', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+      >
+        <HomeIcon sx={{ mr: 0.5, fontSize: 20 }} />
+        Dashboard
+      </Link>,
+      ...pathnames.map((value, index) => {
+        const routeTo = `/${pathnames.slice(0, index + 1).join('/')}`;
+        const isLast = index === pathnames.length - 1;
+
+        return isLast ? (
+          <Typography key={routeTo} color="text.primary" sx={{ display: 'flex', alignItems: 'center' }}>
+            {breadcrumbNameMap[value] || value}
+          </Typography>
+        ) : (
+          <Link
+            key={routeTo}
+            color="inherit"
+            href="#"
+            onClick={(e) => { e.preventDefault(); navigate(routeTo); }}
+            sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+          >
+            {breadcrumbNameMap[value] || value}
+          </Link>
+        );
+      })
+    ];
   };
 
   const renderMenuItem = (item: MenuItem, level: number = 0): React.ReactNode => {
@@ -206,6 +287,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         sx={{
           width: `calc(100% - ${open ? drawerWidth : 64}px)`,
           ml: `${open ? drawerWidth : 64}px`,
+          background: darkMode 
+            ? 'linear-gradient(135deg, #1e1e1e 0%, #2c2c2c 50%, #1a1a1a 100%)'
+            : 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #5a67d8 100%)',
+          boxShadow: darkMode 
+            ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+            : '0 4px 20px rgba(102, 126, 234, 0.3)',
+          backdropFilter: 'blur(10px)',
           transition: (theme) =>
             theme.transitions.create(['width', 'margin'], {
               easing: theme.transitions.easing.sharp,
@@ -213,38 +301,163 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             }),
         }}
       >
-        <Toolbar>
+        <Toolbar sx={{ minHeight: '72px !important', py: 1 }}>
           <IconButton
             color="inherit"
             aria-label="toggle drawer"
             onClick={handleDrawerToggle}
             edge="start"
-            sx={{ marginRight: '36px' }}
+            sx={{ 
+              marginRight: 2,
+              '&:hover': {
+                backgroundColor: alpha('#ffffff', 0.1),
+                transform: 'scale(1.05)',
+              },
+              transition: 'all 0.2s ease'
+            }}
           >
             {open ? <ChevronLeft /> : <MenuIcon />}
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            ERP Sistema
-          </Typography>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <ThemeToggle />
-            <IconButton
-              size="large"
-              aria-label="account of current user"
-              aria-controls="menu-appbar"
-              aria-haspopup="true"
-              onClick={handleMenu}
-              color="inherit"
+
+          {/* Logo e Nome da Empresa */}
+          <Box sx={{ display: 'flex', alignItems: 'center', mr: 3 }}>
+            <Avatar 
+              sx={{ 
+                width: 40, 
+                height: 40, 
+                backgroundColor: alpha('#ffffff', 0.2),
+                border: `2px solid ${alpha('#ffffff', 0.3)}`,
+                mr: 1.5
+              }}
             >
-              <Avatar sx={{ width: 32, height: 32 }}>
-                <AccountCircle />
-              </Avatar>
-            </IconButton>
+              <BusinessIcon sx={{ color: 'white' }} />
+            </Avatar>
+            <Box>
+              <Typography 
+                variant="h6" 
+                sx={{ 
+                  fontWeight: 700,
+                  fontSize: '1.1rem',
+                  lineHeight: 1.2,
+                  textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                }}
+              >
+                ERP Sistema
+              </Typography>
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  opacity: 0.8,
+                  fontSize: '0.7rem',
+                  lineHeight: 1
+                }}
+              >
+                Gestão Empresarial
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* Busca Global */}
+          <TextField
+            size="small"
+            placeholder="Buscar no sistema..."
+            value={searchValue}
+            onChange={handleSearch}
+            sx={{
+              width: 300,
+              mr: 2,
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: alpha('#ffffff', 0.15),
+                borderRadius: 2,
+                '& fieldset': {
+                  borderColor: alpha('#ffffff', 0.3),
+                },
+                '&:hover fieldset': {
+                  borderColor: alpha('#ffffff', 0.5),
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: alpha('#ffffff', 0.8),
+                },
+                '& input': {
+                  color: 'white',
+                  '&::placeholder': {
+                    color: alpha('#ffffff', 0.7),
+                    opacity: 1,
+                  },
+                },
+              },
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: alpha('#ffffff', 0.7) }} />
+                </InputAdornment>
+              ),
+            }}
+          />
+
+          <Box sx={{ flexGrow: 1 }} />
+
+          {/* Ações do Header */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* Notificações */}
+            <Tooltip title="Notificações">
+              <IconButton
+                color="inherit"
+                sx={{
+                  '&:hover': {
+                    backgroundColor: alpha('#ffffff', 0.1),
+                    transform: 'scale(1.05)',
+                  },
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <Badge badgeContent={notificationsCount} color="error">
+                  <NotificationsIcon />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+
+            {/* Theme Toggle */}
+            <ThemeToggle />
+
+            {/* Menu do Usuário */}
+            <Tooltip title="Menu do usuário">
+              <IconButton
+                size="large"
+                aria-label="account of current user"
+                aria-controls="menu-appbar"
+                aria-haspopup="true"
+                onClick={handleMenu}
+                sx={{
+                  ml: 1,
+                  '&:hover': {
+                    backgroundColor: alpha('#ffffff', 0.1),
+                    transform: 'scale(1.05)',
+                  },
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <Avatar 
+                  sx={{ 
+                    width: 36, 
+                    height: 36,
+                    backgroundColor: alpha('#ffffff', 0.2),
+                    border: `2px solid ${alpha('#ffffff', 0.3)}`,
+                    fontSize: '1.2rem'
+                  }}
+                >
+                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                </Avatar>
+              </IconButton>
+            </Tooltip>
+
+            {/* Menu Dropdown */}
             <Menu
               id="menu-appbar"
               anchorEl={anchorEl}
               anchorOrigin={{
-                vertical: 'top',
+                vertical: 'bottom',
                 horizontal: 'right',
               }}
               keepMounted
@@ -254,17 +467,89 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               }}
               open={Boolean(anchorEl)}
               onClose={handleClose}
+              sx={{
+                '& .MuiPaper-root': {
+                  backgroundColor: darkMode ? '#2c2c2c' : '#ffffff',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+                  backdropFilter: 'blur(10px)',
+                  border: `1px solid ${alpha(darkMode ? '#ffffff' : '#000000', 0.1)}`,
+                  borderRadius: 2,
+                  mt: 1.5,
+                  minWidth: 200
+                }
+              }}
             >
-              <MenuItem onClick={handleClose}>
-                <Typography variant="body2" color="text.secondary">
-                  {user?.name} ({user?.role})
-                </Typography>
+              <Box sx={{ p: 2, borderBottom: `1px solid ${alpha(darkMode ? '#ffffff' : '#000000', 0.1)}` }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Avatar sx={{ width: 40, height: 40, backgroundColor: 'primary.main' }}>
+                    {user?.name?.charAt(0).toUpperCase() || 'U'}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="subtitle2" fontWeight="bold">
+                      {user?.name || 'Usuário'}
+                    </Typography>
+                    <Chip 
+                      label={user?.role || 'Usuário'} 
+                      size="small" 
+                      color="primary" 
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem', height: 20 }}
+                    />
+                  </Box>
+                </Box>
+              </Box>
+
+              <MenuItem onClick={handleProfile} sx={{ py: 1.5, px: 2 }}>
+                <ListItemIcon>
+                  <PersonOutline fontSize="small" />
+                </ListItemIcon>
+                <Typography variant="body2">Meu Perfil</Typography>
               </MenuItem>
-              <Divider />
-              <MenuItem onClick={handleLogout}>Sair</MenuItem>
+
+              <Divider sx={{ my: 0.5 }} />
+
+              <MenuItem onClick={handleLogout} sx={{ py: 1.5, px: 2, color: 'error.main' }}>
+                <ListItemIcon>
+                  <ExitToApp fontSize="small" color="error" />
+                </ListItemIcon>
+                <Typography variant="body2">Sair do Sistema</Typography>
+              </MenuItem>
             </Menu>
-          </div>
+          </Box>
         </Toolbar>
+
+        {/* Breadcrumb */}
+        {location.pathname !== '/dashboard' && (
+          <Box
+            sx={{
+              px: 3,
+              py: 1,
+              borderTop: `1px solid ${alpha('#ffffff', 0.2)}`,
+              backgroundColor: alpha('#000000', 0.1),
+            }}
+          >
+            <Breadcrumbs
+              separator={<NavigateNext fontSize="small" />}
+              sx={{
+                '& .MuiBreadcrumbs-separator': {
+                  color: alpha('#ffffff', 0.7),
+                },
+                '& .MuiTypography-root': {
+                  color: alpha('#ffffff', 0.9),
+                  fontSize: '0.875rem',
+                },
+                '& .MuiLink-root': {
+                  color: alpha('#ffffff', 0.8),
+                  '&:hover': {
+                    color: '#ffffff',
+                  },
+                },
+              }}
+            >
+              {getBreadcrumbs()}
+            </Breadcrumbs>
+          </Box>
+        )}
       </AppBar>
 
       <Drawer
@@ -299,7 +584,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           p: 3,
         }}
       >
-        <Toolbar />
+        <Toolbar sx={{ minHeight: location.pathname !== '/dashboard' ? '120px !important' : '72px !important' }} />
         {children}
       </Box>
     </Box>

@@ -286,9 +286,14 @@ export const Suppliers: React.FC = () => {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">
-          Fornecedores
-        </Typography>
+        <Box>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            {total} fornecedores encontrados
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Filtros: {filters.status === 'active' ? 'Ativos' : filters.status === 'inactive' ? 'Inativos' : 'Todos'}
+          </Typography>
+        </Box>
         <Button
           variant="contained"
           startIcon={<Add />}

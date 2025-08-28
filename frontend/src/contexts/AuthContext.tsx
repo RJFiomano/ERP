@@ -65,11 +65,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     toast.info('Logout realizado com sucesso');
   };
 
+  const updateUser = (updatedUser: User) => {
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+  };
+
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
     login,
     logout,
+    updateUser,
     isLoading,
   };
 

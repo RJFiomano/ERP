@@ -3,6 +3,12 @@ export interface User {
   email: string;
   name: string;
   role: 'admin' | 'financeiro' | 'vendas' | 'estoque' | 'leitura';
+  role_id?: string;
+  role_name?: string;
+  permissions?: string[];
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface LoginRequest {
@@ -22,5 +28,6 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  updateUser: (user: User) => void;
   isLoading: boolean;
 }

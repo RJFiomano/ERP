@@ -25,6 +25,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  TableSortLabel,
 } from '@mui/material';
 import { 
   Add, 
@@ -65,9 +66,17 @@ export const Products: React.FC = () => {
     status: 'active',
     stock_status: 'all',
   });
-  const [sortBy] = useState<string>('created_at');
-  const [sortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortBy, setSortBy] = useState<string>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [categories, setCategories] = useState<ProductCategory[]>([]);
+
+  // Função para lidar com ordenação
+  const handleRequestSort = (property: string) => {
+    const isAsc = sortBy === property && sortOrder === 'asc';
+    setSortOrder(isAsc ? 'desc' : 'asc');
+    setSortBy(property);
+    setPage(0); // Reset to first page when sorting
+  };
 
   // Form states
   const [formData, setFormData] = useState<CreateProductRequest>({
@@ -488,9 +497,15 @@ export const Products: React.FC = () => {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">
-          Produtos
-        </Typography>
+        <Box>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            {total} produtos encontrados
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Filtros: {filters.status === 'active' ? 'Ativos' : filters.status === 'inactive' ? 'Inativos' : 'Todos'}
+            {filters.stock_status && ` • Estoque: ${getStockStatusLabel(filters.stock_status)}`}
+          </Typography>
+        </Box>
         <PermissionGuard resource="products" action="create">
           <Button
             variant="contained"
@@ -587,13 +602,61 @@ export const Products: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>SKU</TableCell>
-              <TableCell>Nome</TableCell>
-              <TableCell>Categoria</TableCell>
-              <TableCell>Preço Venda</TableCell>
-              <TableCell>Estoque</TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortBy === 'sku'}
+                  direction={sortBy === 'sku' ? sortOrder : 'asc'}
+                  onClick={() => handleRequestSort('sku')}
+                >
+                  SKU
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortBy === 'name'}
+                  direction={sortBy === 'name' ? sortOrder : 'asc'}
+                  onClick={() => handleRequestSort('name')}
+                >
+                  Nome
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortBy === 'category_name'}
+                  direction={sortBy === 'category_name' ? sortOrder : 'asc'}
+                  onClick={() => handleRequestSort('category_name')}
+                >
+                  Categoria
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortBy === 'sale_price'}
+                  direction={sortBy === 'sale_price' ? sortOrder : 'asc'}
+                  onClick={() => handleRequestSort('sale_price')}
+                >
+                  Preço Venda
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortBy === 'stock_quantity'}
+                  direction={sortBy === 'stock_quantity' ? sortOrder : 'asc'}
+                  onClick={() => handleRequestSort('stock_quantity')}
+                >
+                  Estoque
+                </TableSortLabel>
+              </TableCell>
               <TableCell>Status Estoque</TableCell>
-              <TableCell>Status</TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortBy === 'is_active'}
+                  direction={sortBy === 'is_active' ? sortOrder : 'asc'}
+                  onClick={() => handleRequestSort('is_active')}
+                >
+                  Status
+                </TableSortLabel>
+              </TableCell>
               <TableCell align="center">Ações</TableCell>
             </TableRow>
           </TableHead>

@@ -51,3 +51,22 @@ class UserListResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class UserProfileUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=2, max_length=255)
+    email: Optional[EmailStr] = None
+    current_password: Optional[str] = Field(None, description="Senha atual para validação")
+    new_password: Optional[str] = Field(None, min_length=6, description="Nova senha")
+    confirm_password: Optional[str] = Field(None, description="Confirmação da nova senha")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "name": "João Silva",
+                "email": "joao@empresa.com",
+                "current_password": "senhaAtual123",
+                "new_password": "novaSenha123", 
+                "confirm_password": "novaSenha123"
+            }
+        }

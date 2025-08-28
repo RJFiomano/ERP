@@ -277,9 +277,14 @@ export const Categories: React.FC = () => {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">
-          Categorias
-        </Typography>
+        <Box>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            {total} categorias encontradas
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Filtros: {filters.status === 'active' ? 'Ativas' : filters.status === 'inactive' ? 'Inativas' : 'Todas'}
+          </Typography>
+        </Box>
         {hasPermission('categories', 'create') && (
           <Button
             variant="contained"

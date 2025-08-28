@@ -584,9 +584,14 @@ export const PurchaseOrders: React.FC = () => {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1">
-          Pedidos de Compra
-        </Typography>
+        <Box>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            {orders.length} pedidos de compra encontrados
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Gerencie pedidos de compra e fornecedores
+          </Typography>
+        </Box>
         <Box display="flex" gap={2} alignItems="center">
           <Box display="flex" border="1px solid" borderColor="divider" borderRadius={1}>
             <Tooltip title="Visão Simples">

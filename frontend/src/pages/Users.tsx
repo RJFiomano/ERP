@@ -176,11 +176,17 @@ const Users: React.FC = () => {
         <Grid item xs={12}>
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <GroupIcon color="primary" />
-                <Typography variant="h5" component="h1">
-                  Gerenciamento de Usuários
-                </Typography>
+                <Box>
+                  <Typography variant="h6" color="text.secondary" gutterBottom>
+                    {users.length} usuários encontrados
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Filtros: {filters.status === 'active' ? 'Ativos' : filters.status === 'inactive' ? 'Inativos' : 'Todos'}
+                    {filters.role && ` • Role: ${filters.role}`}
+                  </Typography>
+                </Box>
               </Box>
 
               <PermissionGuard resource="users" action="create">

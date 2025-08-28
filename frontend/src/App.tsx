@@ -30,6 +30,7 @@ import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import Roles from './pages/Roles';
 import Users from './pages/Users';
+import Profile from './pages/Profile';
 import { PurchaseOrders } from './pages/PurchaseOrders';
 import { StockEntries } from './pages/StockEntries';
 
@@ -216,6 +217,17 @@ function App() {
                   <ProtectedRoute>
                     <Layout>
                       <Users />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Profile />
                     </Layout>
                   </ProtectedRoute>
                 }

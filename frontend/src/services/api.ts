@@ -418,6 +418,22 @@ export const usersAPI = {
     await api.patch(`/users/${id}/toggle-status`);
   },
 
+  getProfile: async () => {
+    const response = await api.get('/users/profile');
+    return response.data;
+  },
+
+  updateProfile: async (data: {
+    name?: string;
+    email?: string;
+    current_password?: string;
+    new_password?: string;
+    confirm_password?: string;
+  }) => {
+    const response = await api.put('/users/profile', data);
+    return response.data;
+  },
+
   getUserPermissions: async (id: string): Promise<UserPermissions> => {
     const response = await api.get(`/users/${id}/permissions`);
     return response.data;
